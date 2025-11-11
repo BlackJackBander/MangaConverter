@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конвертер изображений в PDF</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .app-card {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .app-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            min-height: 600px;
+        }
+
+        @media (max-width: 768px) {
+            .app-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .upload-section {
+            padding: 40px;
+            background: #f8f9fa;
+            border-right: 1px solid #e9ecef;
+        }
+
+        .preview-section {
+            padding: 40px;
+            background: white;
+        }
+
+        .upload-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .upload-option-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #667eea;
+            background: white;
+            color: #667eea;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .upload-option-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .upload-option-btn:hover {
+            background: #5a67d8;
+            color: white;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+            margin-bottom: 20px;
+        }
+
+        .upload-area:hover {
+            background: #e9ecef;
+            border-color: #5a67d8;
+        }
+
+        .upload-area i {
+            font-size: 48px;
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+
+        .upload-area h3 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .upload-area p {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .button-secondary {
+            background: #6c757d;
+        }
+
+        .button-secondary:hover {
+            background: #5a6268;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .image-list {
+            margin-top: 20px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .image-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .image-item img {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+
+        .image-info {
+            flex: 1;
+        }
+
+        .image-name {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .image-size {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .image-actions {
+            display: flex;
+            gap: 5px;
+        }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .btn-icon:hover {
+            background: #e9ecef;
+        }
+
+        .preview-container {
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 20px;
+            min-height: 400px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f8f9fa;
+        }
+
+        .preview-placeholder {
+            color: #6c757d;
+        }
+
+        .preview-image {
+            max-width: 100%;
+            max-height: 400px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status.info {
+            background: #cce7ff;
+            color: #004085;
+            border: 1px solid #b3d7ff;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .drag-over {
+            background: #e3f2fd !important;
+            border-color: #2196f3 !important;
+        }
+
+        .page-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .page-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.3s;
+        }
+
+        .page-btn:hover {
+            background: #5a6268;
+        }
+
+        .page-info {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .zip-info {
+            background: #e7f3ff;
+            border: 1px solid #b3d7ff;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9rem;
+        }
+
+        .zip-info h4 {
+            color: #004085;
+            margin-bottom: 5px;
+        }
+
+        .file-counter {
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Конвертер изображений в PDF</h1>
+            <p>Преобразуйте ваши JPG, PNG изображения и ZIP-архивы в PDF документ</p>
+        </div>
+
+        <div class="app-card">
+            <div class="app-content">
+                <!-- Левая часть - загрузка и управление -->
+                <div class="upload-section">
+                    <div class="upload-options">
+                        <button class="upload-option-btn active" id="imagesModeBtn">
+                            📁 Изображения
+                        </button>
+                        <button class="upload-option-btn" id="zipModeBtn">
+                            📦 ZIP-архив
+                        </button>
+                    </div>
+
+                    <div class="upload-area" id="uploadArea">
+                        <i id="uploadIcon">📁</i>
+                        <h3 id="uploadTitle">Перетащите изображения сюда</h3>
+                        <p id="uploadText">или нажмите для выбора файлов</p>
+                        <p><small id="uploadFormats">Поддерживаемые форматы: JPG, PNG</small></p>
+                        <input type="file" id="fileInput" multiple accept=".jpg,.jpeg,.png">
+                    </div>
+
+                    <div class="zip-info" id="zipInfo" style="display: none;">
+                        <h4>📦 Загрузка ZIP-архива</h4>
+                        <p>Загрузите ZIP-файл, содержащий изображения. Поддерживаются JPG и PNG файлы внутри архива.</p>
+                    </div>
+
+                    <div class="controls">
+                        <button class="button" id="convertBtn" disabled>
+                            <span>📄</span> Конвертировать в PDF
+                        </button>
+                        <button class="button button-secondary" id="clearBtn" disabled>
+                            <span>🗑️</span> Очистить
+                        </button>
+                    </div>
+
+                    <div class="image-list" id="imageList">
+                        <!-- Список изображений будет здесь -->
+                    </div>
+
+                    <div class="loading" id="loading">
+                        <div class="spinner"></div>
+                        <p id="loadingText">Создание PDF...</p>
+                    </div>
+
+                    <div class="status info" id="status">
+                        Загрузите изображения для начала конвертации
+                    </div>
+                </div>
+
+                <!-- Правая часть - предпросмотр -->
+                <div class="preview-section">
+                    <h3>Предпросмотр</h3>
+                    <div class="preview-container" id="previewContainer">
+                        <div class="preview-placeholder" id="previewPlaceholder">
+                            Выберите изображение для предпросмотра
+                        </div>
+                        <img class="preview-image" id="previewImage" style="display: none;">
+                    </div>
+
+                    <div class="page-controls" id="pageControls" style="display: none;">
+                        <button class="page-btn" id="prevBtn">←</button>
+                        <span class="page-info" id="pageInfo">Страница 1 из 1</span>
+                        <button class="page-btn" id="nextBtn">→</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Инициализация jsPDF
+        const { jsPDF } = window.jspdf;
+
+        class PDFConverter {
+            constructor() {
+                this.images = [];
+                this.currentPreviewIndex = 0;
+                this.isZipMode = false;
+                this.currentZipFile = null;
+                this.initializeElements();
+                this.bindEvents();
+            }
+
+            initializeElements() {
+                // Основные элементы
+                this.uploadArea = document.getElementById('uploadArea');
+                this.fileInput = document.getElementById('fileInput');
+                this.imageList = document.getElementById('imageList');
+                this.previewContainer = document.getElementById('previewContainer');
+                this.previewPlaceholder = document.getElementById('previewPlaceholder');
+                this.previewImage = document.getElementById('previewImage');
+                this.convertBtn = document.getElementById('convertBtn');
+                this.clearBtn = document.getElementById('clearBtn');
+                this.loading = document.getElementById('loading');
+                this.loadingText = document.getElementById('loadingText');
+                this.status = document.getElementById('status');
+                this.pageControls = document.getElementById('pageControls');
+                this.prevBtn = document.getElementById('prevBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+                this.pageInfo = document.getElementById('pageInfo');
+                
+                // Элементы режимов загрузки
+                this.imagesModeBtn = document.getElementById('imagesModeBtn');
+                this.zipModeBtn = document.getElementById('zipModeBtn');
+                this.zipInfo = document.getElementById('zipInfo');
+                this.uploadIcon = document.getElementById('uploadIcon');
+                this.uploadTitle = document.getElementById('uploadTitle');
+                this.uploadText = document.getElementById('uploadText');
+                this.uploadFormats = document.getElementById('uploadFormats');
+            }
+
+            bindEvents() {
+                // Обработчики событий
+                this.uploadArea.addEventListener('click', () => this.fileInput.click());
+                this.fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                this.convertBtn.addEventListener('click', () => this.convertToPDF());
+                this.clearBtn.addEventListener('click', () => this.clearAll());
+                this.prevBtn.addEventListener('click', () => this.showPreviousImage());
+                this.nextBtn.addEventListener('click', () => this.showNextImage());
+
+                // Переключение режимов
+                this.imagesModeBtn.addEventListener('click', () => this.setImagesMode());
+                this.zipModeBtn.addEventListener('click', () => this.setZipMode());
+
+                // Drag and drop
+                this.uploadArea.addEventListener('dragover', (e) => this.handleDragOver(e));
+                this.uploadArea.addEventListener('dragleave', (e) => this.handleDragLeave(e));
+                this.uploadArea.addEventListener('drop', (e) => this.handleDrop(e));
+            }
+
+            setImagesMode() {
+                this.isZipMode = false;
+                this.imagesModeBtn.classList.add('active');
+                this.zipModeBtn.classList.remove('active');
+                this.zipInfo.style.display = 'none';
+                this.fileInput.multiple = true;
+                this.fileInput.accept = '.jpg,.jpeg,.png';
+                
+                this.uploadIcon.textContent = '📁';
+                this.uploadTitle.textContent = 'Перетащите изображения сюда';
+                this.uploadText.textContent = 'или нажмите для выбора файлов';
+                this.uploadFormats.textContent = 'Поддерживаемые форматы: JPG, PNG';
+                
+                this.clearAll();
+            }
+
+            setZipMode() {
+                this.isZipMode = true;
+                this.zipModeBtn.classList.add('active');
+                this.imagesModeBtn.classList.remove('active');
+                this.zipInfo.style.display = 'block';
+                this.fileInput.multiple = false;
+                this.fileInput.accept = '.zip';
+                
+                this.uploadIcon.textContent = '📦';
+                this.uploadTitle.textContent = 'Перетащите ZIP-архив сюда';
+                this.uploadText.textContent = 'или нажмите для выбора файла';
+                this.uploadFormats.textContent = 'Поддерживаемый формат: ZIP';
+                
+                this.clearAll();
+            }
+
+            handleDragOver(e) {
+                e.preventDefault();
+                this.uploadArea.classList.add('drag-over');
+            }
+
+            handleDragLeave(e) {
+                e.preventDefault();
+                this.uploadArea.classList.remove('drag-over');
+            }
+
+            async handleDrop(e) {
+                e.preventDefault();
+                this.uploadArea.classList.remove('drag-over');
+                const files = Array.from(e.dataTransfer.files);
+                await this.processFiles(files);
+            }
+
+            async handleFileSelect(e) {
+                const files = Array.from(e.target.files);
+                await this.processFiles(files);
+            }
+
+            async processFiles(files) {
+                if (files.length === 0) return;
+
+                if (this.isZipMode) {
+                    // Режим ZIP
+                    const zipFile = files[0];
+                    if (zipFile.type !== 'application/zip' && !zipFile.name.endsWith('.zip')) {
+                        this.showStatus('Пожалуйста, выберите ZIP-файл', 'error');
+                        return;
+                    }
+                    await this.processZipFile(zipFile);
+                } else {
+                    // Режим изображений
+                    const imageFiles = files.filter(file => 
+                        file.type.startsWith('image/') && 
+                        (file.type === 'image/jpeg' || file.type === 'image/png')
+                    );
+
+                    if (imageFiles.length === 0) {
+                        this.showStatus('Пожалуйста, выберите файлы JPG или PNG', 'error');
+                        return;
+                    }
+
+                    imageFiles.forEach(file => this.addImage(file));
+                    this.updateUI();
+                }
+            }
+
+            async processZipFile(zipFile) {
+                this.showLoading(true, 'Извлечение изображений из ZIP...');
+                this.currentZipFile = zipFile;
+
+                try {
+                    const zip = new JSZip();
+                    const zipContent = await zip.loadAsync(zipFile);
+                    
+                    // Получаем все файлы из ZIP
+                    const imageFiles = [];
+                    for (const [filename, file] of Object.entries(zipContent.files)) {
+                        if (!file.dir) {
+                            const fileExtension = filename.split('.').pop().toLowerCase();
+                            if (fileExtension === 'jpg' || fileExtension === 'jpeg' || fileExtension === 'png') {
+                                imageFiles.push({ filename, file });
+                            }
+                        }
+                    }
+
+                    if (imageFiles.length === 0) {
+                        this.showStatus('В ZIP-архиве не найдено изображений JPG/PNG', 'error');
+                        this.showLoading(false);
+                        return;
+                    }
+
+                    // Очищаем текущие изображения
+                    this.clearImages();
+
+                    // Обрабатываем каждое изображение
+                    for (const { filename, file } of imageFiles) {
+                        const blob = await file.async('blob');
+                        const imageFile = new File([blob], filename, { type: this.getMimeType(filename) });
+                        this.addImage(imageFile, true);
+                    }
+
+                    this.showStatus(`Из ZIP-архива извлечено ${imageFiles.length} изображений`, 'success');
+                    this.updateUI();
+
+                } catch (error) {
+                    console.error('Ошибка при обработке ZIP-файла:', error);
+                    this.showStatus('Ошибка при чтении ZIP-файла: ' + error.message, 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            getMimeType(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                if (ext === 'png') return 'image/png';
+                if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
+                return 'application/octet-stream';
+            }
+
+            addImage(file, fromZip = false) {
+                const image = {
+                    file: file,
+                    url: URL.createObjectURL(file),
+                    name: file.name,
+                    size: this.formatFileSize(file.size),
+                    fromZip: fromZip
+                };
+
+                this.images.push(image);
+                this.createImageListItem(image, this.images.length - 1);
+            }
+
+            createImageListItem(image, index) {
+                const item = document.createElement('div');
+                item.className = 'image-item';
+                item.innerHTML = `
+                    <img src="${image.url}" alt="${image.name}" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTAiIGhlaWdodD0iNTAiIHZpZXdCb3g9IjAgMCA1MCA1MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBmaWxsPSIjZGRkIi8+CjxwYXRoIGQ9Ik0zMCAyMEgzMlYzMEgzMloiIGZpbGw9IiM5OTkiLz4KPHBhdGggZD0iTTIwIDIwSDI4VjI4SDIwVjIwWiIgZmlsbD0iIzk5OSIvPgo8L3N2Zz4K'">
+                    <div class="image-info">
+                        <div class="image-name">${image.name} ${image.fromZip ? '📦' : ''}</div>
+                        <div class="image-size">${image.size}</div>
+                    </div>
+                    <div class="image-actions">
+                        <button class="btn-icon preview-btn" data-index="${index}" title="Предпросмотр">👁️</button>
+                        <button class="btn-icon remove-btn" data-index="${index}" title="Удалить">❌</button>
+                        <button class="btn-icon up-btn" data-index="${index}" title="Переместить вверх">⬆️</button>
+                        <button class="btn-icon down-btn" data-index="${index}" title="Переместить вниз">⬇️</button>
+                    </div>
+                `;
+
+                this.imageList.appendChild(item);
+
+                // Привязка событий к кнопкам
+                item.querySelector('.preview-btn').addEventListener('click', (e) => {
+                    this.showImage(index);
+                });
+
+                item.querySelector('.remove-btn').addEventListener('click', (e) => {
+                    this.removeImage(index);
+                });
+
+                item.querySelector('.up-btn').addEventListener('click', (e) => {
+                    this.moveImage(index, -1);
+                });
+
+                item.querySelector('.down-btn').addEventListener('click', (e) => {
+                    this.moveImage(index, 1);
+                });
+            }
+
+            showImage(index) {
+                if (index >= 0 && index < this.images.length) {
+                    this.currentPreviewIndex = index;
+                    this.previewImage.src = this.images[index].url;
+                    this.previewImage.style.display = 'block';
+                    this.previewPlaceholder.style.display = 'none';
+                    this.updatePageControls();
+                }
+            }
+
+            showPreviousImage() {
+                if (this.currentPreviewIndex > 0) {
+                    this.showImage(this.currentPreviewIndex - 1);
+                }
+            }
+
+            showNextImage() {
+                if (this.currentPreviewIndex < this.images.length - 1) {
+                    this.showImage(this.currentPreviewIndex + 1);
+                }
+            }
+
+            removeImage(index) {
+                URL.revokeObjectURL(this.images[index].url);
+                this.images.splice(index, 1);
+                this.updateImageList();
+                this.updateUI();
+                
+                if (this.images.length === 0) {
+                    this.hidePreview();
+                } else if (this.currentPreviewIndex >= this.images.length) {
+                    this.showImage(this.images.length - 1);
+                }
+            }
+
+            moveImage(index, direction) {
+                if ((direction === -1 && index === 0) || 
+                    (direction === 1 && index === this.images.length - 1)) {
+                    return;
+                }
+
+                const newIndex = index + direction;
+                [this.images[index], this.images[newIndex]] = [this.images[newIndex], this.images[index]];
+                
+                if (this.currentPreviewIndex === index) {
+                    this.currentPreviewIndex = newIndex;
+                } else if (this.currentPreviewIndex === newIndex) {
+                    this.currentPreviewIndex = index;
+                }
+                
+                this.updateImageList();
+                this.updatePageControls();
+            }
+
+            updateImageList() {
+                this.imageList.innerHTML = '';
+                this.images.forEach((image, index) => {
+                    this.createImageListItem(image, index);
+                });
+            }
+
+            updateUI() {
+                const hasImages = this.images.length > 0;
+                this.convertBtn.disabled = !hasImages;
+                this.clearBtn.disabled = !hasImages;
+
+                if (hasImages) {
+                    const zipCount = this.images.filter(img => img.fromZip).length;
+                    const regularCount = this.images.length - zipCount;
+                    
+                    let statusText = `Загружено изображений: ${this.images.length}`;
+                    if (zipCount > 0) {
+                        statusText += ` (из ZIP: ${zipCount})`;
+                    }
+                    
+                    this.showStatus(statusText, 'info');
+                    this.pageControls.style.display = 'flex';
+                    if (this.currentPreviewIndex === -1) {
+                        this.showImage(0);
+                    }
+                } else {
+                    this.pageControls.style.display = 'none';
+                }
+            }
+
+            updatePageControls() {
+                this.pageInfo.textContent = `Страница ${this.currentPreviewIndex + 1} из ${this.images.length}`;
+                this.prevBtn.disabled = this.currentPreviewIndex === 0;
+                this.nextBtn.disabled = this.currentPreviewIndex === this.images.length - 1;
+            }
+
+            hidePreview() {
+                this.previewImage.style.display = 'none';
+                this.previewPlaceholder.style.display = 'block';
+                this.pageControls.style.display = 'none';
+                this.currentPreviewIndex = -1;
+            }
+
+            async convertToPDF() {
+                if (this.images.length === 0) {
+                    this.showStatus('Нет изображений для конвертации', 'error');
+                    return;
+                }
+
+                this.showLoading(true, 'Создание PDF...');
+                this.showStatus('Начало конвертации...', 'info');
+
+                try {
+                    const pdf = new jsPDF();
+                    const promises = [];
+
+                    for (let i = 0; i < this.images.length; i++) {
+                        const image = this.images[i];
+                        const img = new Image();
+                        
+                        const promise = new Promise((resolve, reject) => {
+                            img.onload = () => resolve(img);
+                            img.onerror = reject;
+                            img.src = image.url;
+                        });
+
+                        promises.push(promise);
+                    }
+
+                    const images = await Promise.all(promises);
+
+                    for (let i = 0; i < images.length; i++) {
+                        const img = images[i];
+                        
+                        if (i > 0) {
+                            pdf.addPage();
+                        }
+
+                        // Получаем размеры страницы PDF
+                        const pageWidth = pdf.internal.pageSize.getWidth();
+                        const pageHeight = pdf.internal.pageSize.getHeight();
+
+                        // Рассчитываем размеры изображения с сохранением пропорций
+                        const imgRatio = img.width / img.height;
+                        const pageRatio = pageWidth / pageHeight;
+
+                        let renderWidth, renderHeight;
+
+                        if (imgRatio > pageRatio) {
+                            // Изображение шире страницы
+                            renderWidth = pageWidth;
+                            renderHeight = pageWidth / imgRatio;
+                        } else {
+                            // Изображение выше страницы
+                            renderHeight = pageHeight;
+                            renderWidth = pageHeight * imgRatio;
+                        }
+
+                        // Центрируем изображение на странице
+                        const x = (pageWidth - renderWidth) / 2;
+                        const y = (pageHeight - renderHeight) / 2;
+
+                        pdf.addImage(img, 'JPEG', x, y, renderWidth, renderHeight);
+                        
+                        this.showStatus(`Обработано ${i + 1} из ${images.length} изображений`, 'info');
+                    }
+
+                    // Генерируем имя файла
+                    let filename = 'converted_images.pdf';
+                    if (this.currentZipFile) {
+                        filename = this.currentZipFile.name.replace('.zip', '.pdf');
+                    }
+
+                    // Сохраняем PDF
+                    pdf.save(filename);
+                    this.showStatus('PDF успешно создан и скачан!', 'success');
+
+                } catch (error) {
+                    console.error('Ошибка при создании PDF:', error);
+                    this.showStatus('Ошибка при создании PDF: ' + error.message, 'error');
+                } finally {
+                    this.showLoading(false);
+                }
+            }
+
+            clearImages() {
+                this.images.forEach(image => URL.revokeObjectURL(image.url));
+                this.images = [];
+                this.imageList.innerHTML = '';
+            }
+
+            clearAll() {
+                this.clearImages();
+                this.currentZipFile = null;
+                this.hidePreview();
+                this.updateUI();
+                this.showStatus('Все изображения удалены', 'info');
+            }
+
+            showLoading(show, text = 'Создание PDF...') {
+                this.loading.style.display = show ? 'block' : 'none';
+                this.loadingText.textContent = text;
+                this.convertBtn.disabled = show;
+            }
+
+            showStatus(message, type = 'info') {
+                this.status.textContent = message;
+                this.status.className = `status ${type}`;
+            }
+
+            formatFileSize(bytes) {
+                if (bytes === 0) return '0 Bytes';
+                const k = 1024;
+                const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(k));
+                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+            }
+        }
+
+        // Инициализация приложения после загрузки DOM
+        document.addEventListener('DOMContentLoaded', () => {
+            new PDFConverter();
+        });
+    </script>
+</body>
+</html>
